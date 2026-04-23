@@ -13,7 +13,7 @@ The language includes typed variable declarations, `yapping` for output, conditi
 **How to run:** from the project directory,
 
 ```bash
-python main.py yourfile.memecode
+python interpreter.py yourfile.memecode
 ```
 
 ---
