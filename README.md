@@ -1,7 +1,7 @@
 # MemeCode
 
 <p align="center">
-  <img src="docs/memecode-logo.svg" alt="MemeCode language logo" width="480"/>
+  <img src="docs/memecode_logo.svg" alt="MemeCode language logo" width="480"/>
 </p>
 
 ## Language overview
