@@ -1,0 +1,17 @@
+# Demo: variables, logic, and branching
+lore msg = "MemeCode says hi"
+sixSeven n = 3
+vibeCheck ok = n > 1 && n < 10
+losing5050 pi = 3.14
+
+yapping(msg)
+yapping(ok)
+yapping(pi)
+
+bet ok == noCap {
+    yapping("logic checks out")
+} lowkey n == 0 {
+    yapping("zero")
+} nahFr {
+    yapping("other case")
+}
