@@ -280,19 +280,19 @@ def parse_primary(tokens, current):
     token = tokens[current]
     
     if token["type"] == "INT":
-        return {"type": "IntegerLiteral", "value": token["value"]}, current + 1
+        return {"type": "Integer", "value": token["value"]}, current + 1
     
     if token["type"] == "FLOAT":
-        return {"type": "FloatLiteral", "value": token["value"]}, current + 1
+        return {"type": "Float", "value": token["value"]}, current + 1
     
     if token["type"] == "STRING":
-        return {"type": "StringLiteral", "value": token["value"]}, current + 1
+        return {"type": "String", "value": token["value"]}, current + 1
     
     if token["type"] == "KEYWORD" and token["value"] == "noCap":
-        return {"type": "BooleanLiteral", "value": True}, current + 1
+        return {"type": "Boolean", "value": True}, current + 1
     
     if token["type"] == "KEYWORD" and token["value"] == "cap":
-        return {"type": "BooleanLiteral", "value": False}, current + 1
+        return {"type": "Boolean", "value": False}, current + 1
     
     if token["type"] == "IDENTIFIER":
         return {"type": "Identifier", "name": token["value"]}, current + 1
@@ -303,13 +303,13 @@ def interpreter(ast):
     variables = {}
     
     def evaluate(node):
-        if node["type"] == "IntegerLiteral":
+        if node["type"] == "Integer":
             return node["value"]
-        if node["type"] == "FloatLiteral":
+        if node["type"] == "Float":
             return node["value"]
-        if node["type"] == "StringLiteral":
+        if node["type"] == "String":
             return node["value"]
-        if node["type"] == "BooleanLiteral":
+        if node["type"] == "Boolean":
             return node["value"]
         if node["type"] == "Identifier":
             return variables[node["name"]]
