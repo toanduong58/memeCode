@@ -1,363 +1,425 @@
-import sys
 import json
+import sys
 
-filename = sys.argv[1]
+# MemeCode words
+KEYWORDS = [
+    "yapping",
+    "lore",
+    "sixSeven",
+    "vibeCheck",
+    "losing5050",
+    "noCap",
+    "cap",
+    "bet",
+    "lowkey",
+    "nahFr",
+]
 
-# MemeCode keywords
-KEYWORDS = ["yapping", "lore", "sixSeven", "vibeCheck", "losing5050", "noCap", "cap", "bet", "lowkey", "nahFr"]
+# Allowed variable type keywords
+TYPE_KEYWORDS = ["lore", "sixSeven", "vibeCheck", "losing5050"]
 
-def readProgram():
-    full_prog = ""
-    with open(filename, "r") as file:
-        for line in file:
-            full_prog += line
-    return full_prog
+# Operators with 2 characters
+DOUBLE_OPERATORS = {
+    "==": "EQ_EQ",
+    "!=": "NE",
+    "<=": "LE",
+    ">=": "GE",
+    "&&": "AND",
+    "||": "OR",
+}
 
-def lexer(source):
+# Operators with 1 character
+SINGLE_OPERATORS = {
+    "(": "LPAREN",
+    ")": "RPAREN",
+    "{": "LBRACE",
+    "}": "RBRACE",
+    "=": "EQUALS",
+    "<": "LT",
+    ">": "GT",
+}
+
+
+def read_program(file_path):
+    with open(file_path, "r") as file:
+        return file.read()
+
+
+def lexer(source_text):
     tokens = []
-    currentPosition = 0
-    
-    while currentPosition < len(source):
-        char = source[currentPosition]
-        
-        # Skip whitespace, tabs, and newlines (whitespace)
-        if char in " \t\n\r":
-            currentPosition += 1
+    i = 0
+
+    while i < len(source_text):
+        ch = source_text[i]
+
+        # Skip spaces, tabs, and new lines
+        if ch in " \t\n\r":
+            i += 1
             continue
-        
-        # Skip comments
-        if char == "#":
-            while currentPosition < len(source) and source[currentPosition] != "\n":
-                currentPosition += 1
+
+        # Skip comments: # until end of line
+        if ch == "#":
+            while i < len(source_text) and source_text[i] != "\n":
+                i += 1
             continue
-        
-        # Two character operators (==, !=, <=, >=, &&, ||)
-        if currentPosition + 1 < len(source):
-            two = source[currentPosition:currentPosition+2]
-            if two == "==":
-                tokens.append({"type": "EQ_EQ", "value": "=="})
-                currentPosition += 2
+
+        # Check 2-character operators first
+        if i + 1 < len(source_text):
+            two = source_text[i : i + 2]
+            if two in DOUBLE_OPERATORS:
+                tokens.append({"type": DOUBLE_OPERATORS[two], "value": two})
+                i += 2
                 continue
-            if two == "!=":
-                tokens.append({"type": "NE", "value": "!="})
-                currentPosition += 2
-                continue
-            if two == "<=":
-                tokens.append({"type": "LE", "value": "<="})
-                currentPosition += 2
-                continue
-            if two == ">=":
-                tokens.append({"type": "GE", "value": ">="})
-                currentPosition += 2
-                continue
-            if two == "&&":
-                tokens.append({"type": "AND", "value": "&&"})
-                currentPosition += 2
-                continue
-            if two == "||":
-                tokens.append({"type": "OR", "value": "||"})
-                currentPosition += 2
-                continue
-        
-        # Single character tokens
-        if char == "(":
-            tokens.append({"type": "LPAREN", "value": "("})
-            currentPosition += 1
+
+        # Check 1-character operators
+        if ch in SINGLE_OPERATORS:
+            tokens.append({"type": SINGLE_OPERATORS[ch], "value": ch})
+            i += 1
             continue
-        if char == ")":
-            tokens.append({"type": "RPAREN", "value": ")"})
-            currentPosition += 1
+
+        # Strings: "hello" or 'hello'
+        if ch == '"' or ch == "'":
+            quote = ch
+            i += 1
+            start = i
+            while i < len(source_text) and source_text[i] != quote:
+                i += 1
+
+            if i >= len(source_text):
+                raise SyntaxError("String was not closed.")
+
+            tokens.append({"type": "STRING", "value": source_text[start:i]})
+            i += 1
             continue
-        if char == "{":
-            tokens.append({"type": "LBRACE", "value": "{"})
-            currentPosition += 1
-            continue
-        if char == "}":
-            tokens.append({"type": "RBRACE", "value": "}"})
-            currentPosition += 1
-            continue
-        if char == "=":
-            tokens.append({"type": "EQUALS", "value": "="})
-            currentPosition += 1
-            continue
-        if char == "<":
-            tokens.append({"type": "LT", "value": "<"})
-            currentPosition += 1
-            continue
-        if char == ">":
-            tokens.append({"type": "GT", "value": ">"})
-            currentPosition += 1
-            continue
-        
-        # Strings (both single and double quotes)
-        if char == "'" or char == '"':
-            quote_char = char
-            currentPosition += 1
-            start = currentPosition
-            while currentPosition < len(source) and source[currentPosition] != quote_char:
-                currentPosition += 1
-            if currentPosition >= len(source):
-                raise SyntaxError(f"Unterminated string starting with {quote_char}")
-            tokens.append({"type": "STRING", "value": source[start:currentPosition]})
-            currentPosition += 1
-            continue
-        
-        # Numbers
-        if char.isdigit():
-            start = currentPosition
+
+        # Numbers: int or float
+        if ch.isdigit():
+            start = i
             has_dot = False
-            while currentPosition < len(source) and (source[currentPosition].isdigit() or source[currentPosition] == "."):
-                if source[currentPosition] == ".":
+            while i < len(source_text) and (
+                source_text[i].isdigit() or source_text[i] == "."
+            ):
+                if source_text[i] == ".":
                     has_dot = True
-                currentPosition += 1
-            value = source[start:currentPosition]
+                i += 1
+
+            number_text = source_text[start:i]
             if has_dot:
-                tokens.append({"type": "FLOAT", "value": float(value)})
+                tokens.append({"type": "FLOAT", "value": float(number_text)})
             else:
-                tokens.append({"type": "INT", "value": int(value)})
+                tokens.append({"type": "INT", "value": int(number_text)})
             continue
-        
-        # Identifiers and keywords
-        if char.isalpha() or char == "_":
-            start = currentPosition
-            while currentPosition < len(source) and (source[currentPosition].isalnum() or source[currentPosition] == "_"):
-                currentPosition += 1
-            word = source[start:currentPosition]
+
+        # Identifier or keyword
+        if ch.isalpha() or ch == "_":
+            start = i
+            while i < len(source_text) and (
+                source_text[i].isalnum() or source_text[i] == "_"
+            ):
+                i += 1
+
+            word = source_text[start:i]
             if word in KEYWORDS:
                 tokens.append({"type": "KEYWORD", "value": word})
             else:
                 tokens.append({"type": "IDENTIFIER", "value": word})
             continue
-        
-        raise ValueError("Unexpected character: " + char)
-    
+
+        raise ValueError("Unexpected character: " + ch)
+
     return tokens
 
+
 def parse(tokens):
-    current = 0
-    ast = {"type": "Program", "body": []}
-    
-    while current < len(tokens):
-        
-        # Variable declaration: TYPE IDENTIFIER = EXPR
-        if (
-            tokens[current]["type"] == "KEYWORD" and
-            tokens[current]["value"] in ["lore", "sixSeven", "vibeCheck", "losing5050"]
-        ):
-            var_type = tokens[current]["value"]
-            current += 1
-            
-            var_name = tokens[current]["value"]
-            current += 1
-            
-            current += 1  # skip =
-            
-            # Parse value (can be number, string, boolean, identifier, or comparison)
-            value_node, current = parse_expression(tokens, current)
-            
-            ast["body"].append({
+    position = 0
+    program_node = {"type": "Program", "body": []}
+
+    while position < len(tokens):
+        token = tokens[position]
+
+        # Variable declaration: TYPE name = expression
+        if token["type"] == "KEYWORD" and token["value"] in TYPE_KEYWORDS:
+            var_type = tokens[position]["value"]
+            position += 1
+
+            var_name = tokens[position]["value"]
+            position += 1
+
+            # skip =
+            position += 1
+
+            value_node, position = parse_expression(tokens, position)
+
+            program_node["body"].append(
+                {
+                    "type": "VariableDeclaration",
+                    "var_type": var_type,
+                    "name": var_name,
+                    "value": value_node,
+                }
+            )
+            continue
+
+        # Print statement: yapping(expression)
+        if token["type"] == "KEYWORD" and token["value"] == "yapping":
+            position += 1
+            if tokens[position]["type"] != "LPAREN":
+                raise SyntaxError("Expected '(' after yapping")
+            position += 1
+
+            value_node, position = parse_expression(tokens, position)
+
+            if position >= len(tokens) or tokens[position]["type"] != "RPAREN":
+                raise SyntaxError("Expected ')' after yapping expression")
+            position += 1
+
+            program_node["body"].append({"type": "PrintStatement", "value": value_node})
+            continue
+
+        # If statement: bet condition { ... } lowkey condition { ... } nahFr { ... }
+        if token["type"] == "KEYWORD" and token["value"] == "bet":
+            position += 1
+            condition_node, position = parse_expression(tokens, position)
+
+            # skip {
+            position += 1
+
+            if_body = []
+            while tokens[position]["type"] != "RBRACE":
+                statement_node, position = parse_statement_in_block(tokens, position)
+                if_body.append(statement_node)
+
+            # skip }
+            position += 1
+
+            if_node = {
+                "type": "IfStatement",
+                "condition": condition_node,
+                "body": if_body,
+                "elseif_branches": [],
+                "else_body": None,
+            }
+
+            # zero or many else-if branches
+            while (
+                position < len(tokens)
+                and tokens[position]["type"] == "KEYWORD"
+                and tokens[position]["value"] == "lowkey"
+            ):
+                position += 1
+                elseif_condition, position = parse_expression(tokens, position)
+
+                # skip {
+                position += 1
+
+                elseif_body = []
+                while tokens[position]["type"] != "RBRACE":
+                    statement_node, position = parse_statement_in_block(tokens, position)
+                    elseif_body.append(statement_node)
+
+                # skip }
+                position += 1
+                if_node["elseif_branches"].append(
+                    {"condition": elseif_condition, "body": elseif_body}
+                )
+
+            # optional else branch
+            if (
+                position < len(tokens)
+                and tokens[position]["type"] == "KEYWORD"
+                and tokens[position]["value"] == "nahFr"
+            ):
+                position += 1
+                # skip {
+                position += 1
+
+                else_body = []
+                while tokens[position]["type"] != "RBRACE":
+                    statement_node, position = parse_statement_in_block(tokens, position)
+                    else_body.append(statement_node)
+
+                # skip }
+                position += 1
+                if_node["else_body"] = else_body
+
+            program_node["body"].append(if_node)
+            continue
+
+        raise ValueError("Syntax error near token index " + str(position))
+
+    return program_node
+
+
+def parse_statement_in_block(tokens, position):
+    token = tokens[position]
+
+    if token["type"] == "KEYWORD" and token["value"] in TYPE_KEYWORDS:
+        var_type = tokens[position]["value"]
+        position += 1
+        var_name = tokens[position]["value"]
+        position += 1
+        # skip =
+        position += 1
+        value_node, position = parse_expression(tokens, position)
+        return (
+            {
                 "type": "VariableDeclaration",
                 "var_type": var_type,
                 "name": var_name,
-                "value": value_node
-            })
-        
-        # Print statement: yapping(EXPR)
-        elif (
-            tokens[current]["type"] == "KEYWORD" and
-            tokens[current]["value"] == "yapping"
-        ):
-            current += 1  # skip yapping
-            if tokens[current]["type"] != "LPAREN":
-                raise SyntaxError("Expected '(' after yapping")
-            current += 1  # skip (
-            
-            value_node, current = parse_expression(tokens, current)
-            
-            if current >= len(tokens) or tokens[current]["type"] != "RPAREN":
-                raise SyntaxError("Expected ')' to close yapping")
-            current += 1  # skip )
-            
-            ast["body"].append({
-                "type": "PrintStatement",
-                "value": value_node
-            })
-        
-        # If statement: bet EXPR { ... } else if EXPR { ... } else { ... }
-        elif (
-            tokens[current]["type"] == "KEYWORD" and
-            tokens[current]["value"] == "bet"
-        ):
-            current += 1  # skip bet
-            
-            condition, current = parse_expression(tokens, current)
-            
-            current += 1  # skip {
-            
-            body = []
-            while tokens[current]["type"] != "RBRACE":
-                stmt, current = parse_statement_inside_block(tokens, current)
-                body.append(stmt)
-            
-            current += 1  # skip }
-            
-            node = {
-                "type": "IfStatement",
-                "condition": condition,
-                "body": body,
-                "elseif_branches": [],
-                "else_body": None
-            }
-            
-            # Check for lowkey (else-if)
-            while current < len(tokens) and tokens[current]["type"] == "KEYWORD" and tokens[current]["value"] == "lowkey":
-                current += 1  # skip lowkey
-                elif_cond, current = parse_expression(tokens, current)
-                current += 1  # skip {
-                elif_body = []
-                while tokens[current]["type"] != "RBRACE":
-                    stmt, current = parse_statement_inside_block(tokens, current)
-                    elif_body.append(stmt)
-                current += 1  # skip }
-                node["elseif_branches"].append({"condition": elif_cond, "body": elif_body})
-            
-            # Check for nahFr (else)
-            if current < len(tokens) and tokens[current]["type"] == "KEYWORD" and tokens[current]["value"] == "nahFr":
-                current += 1  # skip nahFr
-                current += 1  # skip {
-                else_body = []
-                while tokens[current]["type"] != "RBRACE":
-                    stmt, current = parse_statement_inside_block(tokens, current)
-                    else_body.append(stmt)
-                current += 1  # skip }
-                node["else_body"] = else_body
-            
-            ast["body"].append(node)
-        
-        else:
-            raise ValueError("Syntax error near token " + str(current))
-    
-    return ast
+                "value": value_node,
+            },
+            position,
+        )
 
-def parse_statement_inside_block(tokens, current):
-    # Variable declaration inside block
-    if tokens[current]["type"] == "KEYWORD" and tokens[current]["value"] in ["lore", "sixSeven", "vibeCheck", "losing5050"]:
-        var_type = tokens[current]["value"]
-        current += 1
-        var_name = tokens[current]["value"]
-        current += 1
-        current += 1  # skip =
-        value_node, current = parse_expression(tokens, current)
-        return {"type": "VariableDeclaration", "var_type": var_type, "name": var_name, "value": value_node}, current
-    
-    # Print inside block
-    if tokens[current]["type"] == "KEYWORD" and tokens[current]["value"] == "yapping":
-        current += 1  # skip yapping
-        if tokens[current]["type"] != "LPAREN":
+    if token["type"] == "KEYWORD" and token["value"] == "yapping":
+        position += 1
+        if tokens[position]["type"] != "LPAREN":
             raise SyntaxError("Expected '(' after yapping")
-        current += 1  # skip (
-        value_node, current = parse_expression(tokens, current)
-        if current >= len(tokens) or tokens[current]["type"] != "RPAREN":
-            raise SyntaxError("Expected ')' to close yapping")
-        current += 1  # skip )
-        return {"type": "PrintStatement", "value": value_node}, current
-    
-    raise ValueError("Syntax error in block near token " + str(current))
+        position += 1
+        value_node, position = parse_expression(tokens, position)
+        if position >= len(tokens) or tokens[position]["type"] != "RPAREN":
+            raise SyntaxError("Expected ')' after yapping expression")
+        position += 1
+        return {"type": "PrintStatement", "value": value_node}, position
 
-def parse_expression(tokens, current):
-    left, current = parse_primary(tokens, current)
-    
-    # Check for binary operators
-    while current < len(tokens) and tokens[current]["type"] in ["AND", "OR", "EQ_EQ", "NE", "LT", "GT", "LE", "GE"]:
-        op = tokens[current]["value"]
-        current += 1
-        right, current = parse_primary(tokens, current)
-        left = {"type": "BinaryOp", "op": op, "left": left, "right": right}
-    
-    return left, current
+    raise ValueError("Syntax error in block near token index " + str(position))
 
-def parse_primary(tokens, current):
-    token = tokens[current]
-    
+
+def parse_expression(tokens, position):
+    left_node, position = parse_primary(tokens, position)
+
+    while position < len(tokens) and tokens[position]["type"] in [
+        "AND",
+        "OR",
+        "EQ_EQ",
+        "NE",
+        "LT",
+        "GT",
+        "LE",
+        "GE",
+    ]:
+        operator = tokens[position]["value"]
+        position += 1
+        right_node, position = parse_primary(tokens, position)
+        left_node = {
+            "type": "BinaryOp",
+            "op": operator,
+            "left": left_node,
+            "right": right_node,
+        }
+
+    return left_node, position
+
+
+def parse_primary(tokens, position):
+    token = tokens[position]
+
     if token["type"] == "INT":
-        return {"type": "Integer", "value": token["value"]}, current + 1
-    
+        return {"type": "Integer", "value": token["value"]}, position + 1
+
     if token["type"] == "FLOAT":
-        return {"type": "Float", "value": token["value"]}, current + 1
-    
+        return {"type": "Float", "value": token["value"]}, position + 1
+
     if token["type"] == "STRING":
-        return {"type": "String", "value": token["value"]}, current + 1
-    
+        return {"type": "String", "value": token["value"]}, position + 1
+
     if token["type"] == "KEYWORD" and token["value"] == "noCap":
-        return {"type": "Boolean", "value": True}, current + 1
-    
+        return {"type": "Boolean", "value": True}, position + 1
+
     if token["type"] == "KEYWORD" and token["value"] == "cap":
-        return {"type": "Boolean", "value": False}, current + 1
-    
+        return {"type": "Boolean", "value": False}, position + 1
+
     if token["type"] == "IDENTIFIER":
-        return {"type": "Identifier", "name": token["value"]}, current + 1
-    
+        return {"type": "Identifier", "name": token["value"]}, position + 1
+
     raise ValueError("Unexpected token in expression: " + str(token))
 
-def interpreter(ast):
+
+def run_interpreter(ast):
     variables = {}
-    
+
     def evaluate(node):
-        if node["type"] == "Integer":
+        node_type = node["type"]
+
+        if node_type == "Integer":
             return node["value"]
-        if node["type"] == "Float":
+        if node_type == "Float":
             return node["value"]
-        if node["type"] == "String":
+        if node_type == "String":
             return node["value"]
-        if node["type"] == "Boolean":
+        if node_type == "Boolean":
             return node["value"]
-        if node["type"] == "Identifier":
+        if node_type == "Identifier":
             return variables[node["name"]]
-        if node["type"] == "BinaryOp":
-            left = evaluate(node["left"])
-            right = evaluate(node["right"])
-            op = node["op"]
-            if op == "==": return left == right
-            if op == "!=": return left != right
-            if op == "<": return left < right
-            if op == ">": return left > right
-            if op == "<=": return left <= right
-            if op == ">=": return left >= right
-            if op == "&&": return left and right
-            if op == "||": return left or right
-        raise ValueError("Unknown node: " + node["type"])
-    
-    def execute(node):
-        if node["type"] == "VariableDeclaration":
-            variables[node["name"]] = evaluate(node["value"])
-        
-        elif node["type"] == "PrintStatement":
-            print(evaluate(node["value"]))
-        
-        elif node["type"] == "IfStatement":
-            if evaluate(node["condition"]):
-                for stmt in node["body"]:
-                    execute(stmt)
-            else:
-                ran = False
-                for branch in node["elseif_branches"]:
-                    if evaluate(branch["condition"]):
-                        for stmt in branch["body"]:
-                            execute(stmt)
-                        ran = True
-                        break
-                if not ran and node["else_body"]:
-                    for stmt in node["else_body"]:
-                        execute(stmt)
-    
-    for stmt in ast["body"]:
-        execute(stmt)
+
+        if node_type == "BinaryOp":
+            left_value = evaluate(node["left"])
+            right_value = evaluate(node["right"])
+            operator = node["op"]
+
+            if operator == "==":
+                return left_value == right_value
+            if operator == "!=":
+                return left_value != right_value
+            if operator == "<":
+                return left_value < right_value
+            if operator == ">":
+                return left_value > right_value
+            if operator == "<=":
+                return left_value <= right_value
+            if operator == ">=":
+                return left_value >= right_value
+            if operator == "&&":
+                return left_value and right_value
+            if operator == "||":
+                return left_value or right_value
+
+        raise ValueError("Unknown node type: " + node_type)
+
+    def execute(statement):
+        if statement["type"] == "VariableDeclaration":
+            variables[statement["name"]] = evaluate(statement["value"])
+            return
+
+        if statement["type"] == "PrintStatement":
+            print(evaluate(statement["value"]))
+            return
+
+        if statement["type"] == "IfStatement":
+            if evaluate(statement["condition"]):
+                for inner_statement in statement["body"]:
+                    execute(inner_statement)
+                return
+
+            did_run_branch = False
+            for branch in statement["elseif_branches"]:
+                if evaluate(branch["condition"]):
+                    for inner_statement in branch["body"]:
+                        execute(inner_statement)
+                    did_run_branch = True
+                    break
+
+            if not did_run_branch and statement["else_body"]:
+                for inner_statement in statement["else_body"]:
+                    execute(inner_statement)
+            return
+
+        raise ValueError("Unknown statement type: " + statement["type"])
+
+    for statement in ast["body"]:
+        execute(statement)
+
 
 if __name__ == "__main__":
-    source = readProgram()
-    tokens = lexer(source)
-    ast = parse(tokens)
+    if len(sys.argv) < 2:
+        raise ValueError("Please provide a source file. Example: python interpreter.py example.memecode")
+
+    source_file = sys.argv[1]
+    source_code = read_program(source_file)
+    token_list = lexer(source_code)
+    ast_tree = parse(token_list)
+
     print("--------------AST--------------")
-    print(json.dumps(ast, indent=2))
+    print(json.dumps(ast_tree, indent=2))
     print("\n--------------OUTPUT--------------")
-    interpreter(ast)
+    run_interpreter(ast_tree)
