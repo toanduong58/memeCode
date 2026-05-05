@@ -356,9 +356,6 @@ def interpreter(ast):
 if __name__ == "__main__":
     source = readProgram()
     tokens = lexer(source)
-    print("--------------TOKENS--------------")
-    print(json.dumps(tokens, indent=2))
-    print("\n")
     ast = parse(tokens)
     print("--------------AST--------------")
     print(json.dumps(ast, indent=2))
