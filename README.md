@@ -65,7 +65,7 @@ MemeCode keyword or symbol (left) and its role (right).
 | `nahFr` | Else branch (`else`). |
 | `{` `}` | Block delimiters around statement lists. |
 | `==` `!=` `<` `>` `<=` `>=` | Comparison operators. |
-| `&&` `||` | Logical **and** / **or**. |
+| `&&` `\|\|` | Logical **and** / **or**. |
 | `#` … end of line | Line comment (ignored by the lexer). |
 
 ---
