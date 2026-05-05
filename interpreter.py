@@ -15,99 +15,102 @@ def readProgram():
 
 def lexer(source):
     tokens = []
-    pos = 0
+    currentPosition = 0
     
-    while pos < len(source):
-        char = source[pos]
+    while currentPosition < len(source):
+        char = source[currentPosition]
         
-        # Skip whitespace and newlines
+        # Skip whitespace, tabs, and newlines (whitespace)
         if char in " \t\n\r":
-            pos += 1
+            currentPosition += 1
             continue
         
         # Skip comments
         if char == "#":
-            while pos < len(source) and source[pos] != "\n":
-                pos += 1
+            while currentPosition < len(source) and source[currentPosition] != "\n":
+                currentPosition += 1
             continue
         
-        # Two-character operators
-        if pos + 1 < len(source):
-            two = source[pos:pos+2]
+        # Two character operators (==, !=, <=, >=, &&, ||)
+        if currentPosition + 1 < len(source):
+            two = source[currentPosition:currentPosition+2]
             if two == "==":
                 tokens.append({"type": "EQ_EQ", "value": "=="})
-                pos += 2
+                currentPosition += 2
                 continue
             if two == "!=":
                 tokens.append({"type": "NE", "value": "!="})
-                pos += 2
+                currentPosition += 2
                 continue
             if two == "<=":
                 tokens.append({"type": "LE", "value": "<="})
-                pos += 2
+                currentPosition += 2
                 continue
             if two == ">=":
                 tokens.append({"type": "GE", "value": ">="})
-                pos += 2
+                currentPosition += 2
                 continue
             if two == "&&":
                 tokens.append({"type": "AND", "value": "&&"})
-                pos += 2
+                currentPosition += 2
                 continue
             if two == "||":
                 tokens.append({"type": "OR", "value": "||"})
-                pos += 2
+                currentPosition += 2
                 continue
         
         # Single character tokens
         if char == "(":
             tokens.append({"type": "LPAREN", "value": "("})
-            pos += 1
+            currentPosition += 1
             continue
         if char == ")":
             tokens.append({"type": "RPAREN", "value": ")"})
-            pos += 1
+            currentPosition += 1
             continue
         if char == "{":
             tokens.append({"type": "LBRACE", "value": "{"})
-            pos += 1
+            currentPosition += 1
             continue
         if char == "}":
             tokens.append({"type": "RBRACE", "value": "}"})
-            pos += 1
+            currentPosition += 1
             continue
         if char == "=":
             tokens.append({"type": "EQUALS", "value": "="})
-            pos += 1
+            currentPosition += 1
             continue
         if char == "<":
             tokens.append({"type": "LT", "value": "<"})
-            pos += 1
+            currentPosition += 1
             continue
         if char == ">":
             tokens.append({"type": "GT", "value": ">"})
-            pos += 1
+            currentPosition += 1
             continue
         
-        # Strings
-        if char == '"':
-            pos += 1
-            start = pos
-            while pos < len(source) and source[pos] != '"':
-                pos += 1
-            tokens.append({"type": "STRING", "value": source[start:pos]})
-            pos += 1
+        # Strings (both single and double quotes)
+        if char == "'" or char == '"':
+            quote_char = char
+            currentPosition += 1
+            start = currentPosition
+            while currentPosition < len(source) and source[currentPosition] != quote_char:
+                currentPosition += 1
+            if currentPosition >= len(source):
+                raise SyntaxError(f"Unterminated string starting with {quote_char}")
+            tokens.append({"type": "STRING", "value": source[start:currentPosition]})
+            currentPosition += 1
             continue
         
         # Numbers
         if char.isdigit():
-            start = pos
+            start = currentPosition
             has_dot = False
-            while pos < len(source) and (source[pos].isdigit() or source[pos] == "."):
-                if source[pos] == ".":
+            while currentPosition < len(source) and (source[currentPosition].isdigit() or source[currentPosition] == "."):
+                if source[currentPosition] == ".":
                     has_dot = True
-                pos += 1
-            value = source[start:pos]
+                currentPosition += 1
+            value = source[start:currentPosition]
             if has_dot:
                 tokens.append({"type": "FLOAT", "value": float(value)})
             else:
@@ -116,10 +119,10 @@ def lexer(source):
         
         # Identifiers and keywords
         if char.isalpha() or char == "_":
-            start = pos
-            while pos < len(source) and (source[pos].isalnum() or source[pos] == "_"):
-                pos += 1
-            word = source[start:pos]
+            start = currentPosition
+            while currentPosition < len(source) and (source[currentPosition].isalnum() or source[currentPosition] == "_"):
+                currentPosition += 1
+            word = source[start:currentPosition]
             if word in KEYWORDS:
                 tokens.append({"type": "KEYWORD", "value": word})
             else:
@@ -137,7 +140,6 @@ def parse(tokens):
     while current < len(tokens):
         
         # Variable declaration: TYPE IDENTIFIER = EXPR
-        # Example: sixSeven x = 5
         if (
             tokens[current]["type"] == "KEYWORD" and
             tokens[current]["value"] in ["lore", "sixSeven", "vibeCheck", "losing5050"]
@@ -166,10 +168,14 @@ def parse(tokens):
             tokens[current]["value"] == "yapping"
         ):
             current += 1  # skip yapping
+            if tokens[current]["type"] != "LPAREN":
+                raise SyntaxError("Expected '(' after yapping")
             current += 1  # skip (
             
             value_node, current = parse_expression(tokens, current)
             
+            if current >= len(tokens) or tokens[current]["type"] != "RPAREN":
+                raise SyntaxError("Expected ')' to close yapping")
             current += 1  # skip )
             
             ast["body"].append({
@@ -177,7 +183,7 @@ def parse(tokens):
                 "value": value_node
             })
         
-        # If statement: bet EXPR { ... }
+        # If statement: bet EXPR { ... } else if EXPR { ... } else { ... }
         elif (
             tokens[current]["type"] == "KEYWORD" and
             tokens[current]["value"] == "bet"
@@ -247,8 +253,12 @@ def parse_statement_inside_block(tokens, current):
     # Print inside block
     if tokens[current]["type"] == "KEYWORD" and tokens[current]["value"] == "yapping":
         current += 1  # skip yapping
+        if tokens[current]["type"] != "LPAREN":
+            raise SyntaxError("Expected '(' after yapping")
         current += 1  # skip (
         value_node, current = parse_expression(tokens, current)
+        if current >= len(tokens) or tokens[current]["type"] != "RPAREN":
+            raise SyntaxError("Expected ')' to close yapping")
         current += 1  # skip )
         return {"type": "PrintStatement", "value": value_node}, current
     
@@ -346,8 +356,11 @@ def interpreter(ast):
 if __name__ == "__main__":
     source = readProgram()
     tokens = lexer(source)
+    print("--------------TOKENS--------------")
+    print(json.dumps(tokens, indent=2))
+    print("\n")
     ast = parse(tokens)
-    print("--------------------------------AST--------------------------------")
+    print("--------------AST--------------")
     print(json.dumps(ast, indent=2))
-    print("\n--------------------------------OUTPUT--------------------------------")
+    print("\n--------------OUTPUT--------------")
     interpreter(ast)
