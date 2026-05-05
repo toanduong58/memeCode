@@ -412,7 +412,7 @@ def run_interpreter(ast):
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        raise ValueError("Please provide a source file. Example: python interpreter_beginner.py example.memecode")
+        raise ValueError("Please provide a source file. Example: python interpreter.py example.memecode")
 
     source_file = sys.argv[1]
     source_code = read_program(source_file)
