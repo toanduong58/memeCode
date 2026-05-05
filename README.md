@@ -106,7 +106,7 @@ literal     ::= string | integer | float | bool_lit ;
 bool_lit    ::= "noCap" | "cap" ;
 ```
 
-*Lexical notes:* `identifier` is a letter or underscore followed by letters, digits, or underscores; `string` is characters between `"` … `"`; `integer` is one or more digits; `float` is digits containing a decimal point; whitespace separates tokens; `#` starts a comment to end of line.
+*Lexical notes:* `identifier` is a letter or underscore followed by letters, digits, or underscores; `string` is characters between `"` … `"` (or `'` … `'`); `integer` is one or more digits; `float` is digits containing a decimal point; whitespace separates tokens; `#` starts a comment to end of line.
 
 ---
 
